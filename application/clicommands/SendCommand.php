@@ -4,6 +4,7 @@ namespace Icinga\Module\Jira\Clicommands;
 
 use Exception;
 use Icinga\Application\Logger;
+use Icinga\Application\Config;
 use Icinga\Module\Jira\IcingaCommandPipe;
 use Icinga\Module\Jira\Cli\Command;
 use Icinga\Module\Jira\IssueTemplate;
@@ -61,6 +62,8 @@ class SendCommand extends Command
         $jira = $this->jira();
         $issue = $jira->eventuallyGetLatestOpenIssueFor($host, $service);
 
+        $config = Config::module('jira');
+
         if ($issue === null) {
             if (\in_array($status, ['UP', 'OK'])) {
                 // No existing issue, no problem, nothing to do
@@ -92,8 +95,9 @@ class SendCommand extends Command
             $currentStatus = isset($issue->fields->icingaStatus) ? $issue->fields->icingaStatus : null;
             $ackMessage = "Existing JIRA issue $key has been found";
             if ($currentStatus !== $status) {
+                $icingaStatus = $config->get('ui', 'field_icingaStatus', 'icingaStatus');
                 $update = new IssueUpdate($jira, $key);
-                $update->setCustomField('icingaStatus', $status);
+                $update->setCustomField($icingaStatus, $status);
                 $update->addComment("Status changed to $status\n" . $description);
                 $jira->updateIssue($update);
             }
